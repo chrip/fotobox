@@ -14,11 +14,11 @@ def takePhotos():
     print "take photos"  
     camera = PiCamera()
     camera.resolution = "1280x800"
-    #camera.start_preview()
-    #GPIO.output(40,True)
-    #sleep(8)
-    #GPIO.output(40,False)
-    #camera.stop_preview()
+    camera.start_preview()
+    GPIO.output(40,True)
+    sleep(8)
+    GPIO.output(40,False)
+    camera.stop_preview()
     for i in [0.5, 0.2, 0.1]:
       for j in range(4):
         print i,j
