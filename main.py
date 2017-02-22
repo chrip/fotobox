@@ -7,17 +7,20 @@ from PIL import Image, ImageTk
 import gc
 
 TAKE_PHOTO_BUTTON_PIN = 13
+Relais_1_PIN = 3
+Relais_2_PIN = 5
+PREVIEW_RESOLUTION = (1280, 800)
+PHOTO_RESOLUTION = (2592, 1620)
 
 class Fotobox():
   def __init__(self):
     GPIO.setmode(GPIO.BOARD) 
-    #GPIO.setup(40, GPIO.OUT)
-    #GPIO.setup(33, GPIO.OUT)
+    GPIO.setup(Relais_1_PIN, GPIO.OUT, initial=True)
     GPIO.setup(TAKE_PHOTO_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.add_event_detect(TAKE_PHOTO_BUTTON_PIN, GPIO.RISING, callback=self.takePhotos, bouncetime=2000)
+    GPIO.add_event_detect(TAKE_PHOTO_BUTTON_PIN, GPIO.RISING, callback=self.takePhotos, bouncetime=200)
     #init Frame
     self.tk = Tk()
-    self.tk.geometry("=500x500")
+    #self.tk.geometry("=500x500")
     self.tk.attributes('-fullscreen', True)
     self.tk.config(background='white', cursor='none')
     self.pictureDisplay = Label(self.tk, background='white')
@@ -26,7 +29,7 @@ class Fotobox():
     self.pictureDisplay.pack(expand=True)
     self.tk.bind("<Escape>", self.endFullscreen)
     self.camera = PiCamera() 
-    self.camera.resolution = (1067, 800)
+    self.camera.resolution = PREVIEW_RESOLUTION 
     self.is_ready_for_photo = True
     self.camera.start_preview()
 
@@ -40,61 +43,38 @@ class Fotobox():
   def showResult(self, displayTime, filename):
     with io.open(filename, 'rb') as ifh:
       original = Image.open(ifh)
-      resized = original.resize((1067, 800),Image.ANTIALIAS) 
+      resized = original.resize(PREVIEW_RESOLUTION) 
       self.pictureDisplay.image = ImageTk.PhotoImage(resized) # Keep a reference, prevent GC
       self.pictureDisplay.config(image=self.pictureDisplay.image)
       sleep(displayTime)
+      self.pictureDisplay['text'] = ''
       self.pictureDisplay.config(image="")
-    
-  def ledOnOff(self, gpioPin, sleepTime):
-    GPIO.output(gpioPin,True)
-    sleep(sleepTime)
-    GPIO.output(gpioPin,False)
+
 
   def takePhotos(self, channel):
-    if (channel == TAKE_PHOTO_BUTTON_PIN and GPIO.input(TAKE_PHOTO_BUTTON_PIN) and self.is_ready_for_photo == True):
+    if (GPIO.input(TAKE_PHOTO_BUTTON_PIN) and self.is_ready_for_photo == True):
       self.is_ready_for_photo = False
-      self.pictureDisplay['text'] = '3'
       self.camera.stop_preview()
-      for t in ['3','2','1']:
-        sleep(1)
+      #self.pictureDisplay.config(font=("Courier", 300))
+      for t in ['3','2','1']:        
         self.pictureDisplay['text'] = t
-
-      for ex in ['_a','_b','_c']: 
-        self.camera.resolution = (2592, 1944)
-        name = 'img_'+str(self.camera.timestamp)+ex+'.jpg'
-        self.camera.capture(name)
+        sleep(1)
+      
+      for ex in ['_a','_b','_c']:
         self.pictureDisplay['text'] = ''
+        self.camera.resolution = PHOTO_RESOLUTION
+        name = 'img_'+str(self.camera.timestamp)+ex+'.jpg'
+        GPIO.output(Relais_1_PIN, False)
+        self.camera.capture(name)
+        GPIO.output(Relais_1_PIN, True)
+        #self.pictureDisplay.config(font=("Courier", 50))
+        #self.pictureDisplay['text'] = 'lade...'
         self.showResult(3, name)
-      self.camera.resolution = (1067, 800)
+      self.camera.resolution = PREVIEW_RESOLUTION 
       self.camera.start_preview()
       self.is_ready_for_photo = True
     else:
       print 'not ready yet'
-      
-  def takePhotos2(self, channel):
-    if (channel == TAKE_PHOTO_BUTTON_PIN and GPIO.input(TAKE_PHOTO_BUTTON_PIN)):
-      print "take photos"
-      for ex in ['_a','_b','_c']:
-        with PiCamera() as camera:
-          camera.resolution = (1067, 800)
-          camera.start_preview()
-          #self.ledOnOff(40, 5)
-          for i in [0.5, 0.2, 0.1]:
-            for j in range(4):
-              self.ledOnOff(40, i)
-              sleep(i)
-          camera.stop_preview()
-          camera.resolution = "2592x1944"
-          GPIO.output(33,True)
-          name = 'img_'+str(camera.timestamp)+ex+'.jpg'
-          camera.capture(name)
-          print name
-          GPIO.output(33,False)
-          camera.close()
-          self.showResult(3, name)
-      print "take photos done"
-    
       
 
   def run(self):
