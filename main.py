@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import RPi.GPIO as GPIO ## Import GPIO library
 from time import sleep
 from picamera import PiCamera
@@ -11,6 +13,7 @@ Relais_1_PIN = 3
 Relais_2_PIN = 5
 PREVIEW_RESOLUTION = (1280, 800)
 PHOTO_RESOLUTION = (2592, 1620)
+SHUTTER_SPEED = 1000
 
 class Fotobox():
   def __init__(self):
@@ -29,7 +32,8 @@ class Fotobox():
     self.pictureDisplay.pack(expand=True)
     self.tk.bind("<Escape>", self.endFullscreen)
     self.camera = PiCamera() 
-    self.camera.resolution = PREVIEW_RESOLUTION 
+    self.camera.resolution = PREVIEW_RESOLUTION
+    self.camera.hflip = True
     self.is_ready_for_photo = True
     self.camera.start_preview()
 
@@ -55,22 +59,26 @@ class Fotobox():
     if (GPIO.input(TAKE_PHOTO_BUTTON_PIN) and self.is_ready_for_photo == True):
       self.is_ready_for_photo = False
       self.camera.stop_preview()
-      #self.pictureDisplay.config(font=("Courier", 300))
-      for t in ['3','2','1']:        
-        self.pictureDisplay['text'] = t
-        sleep(1)
-      
+      self.camera.hflip = False
+      #self.pictureDisplay.config(font=("Courier", 300))      
+
       for ex in ['_a','_b','_c']:
+        for t in ['3','2','1']:        
+          self.pictureDisplay['text'] = t
+          if t == '1':
+            GPIO.output(Relais_1_PIN, False)
+          sleep(1)
         self.pictureDisplay['text'] = ''
         self.camera.resolution = PHOTO_RESOLUTION
-        name = 'img_'+str(self.camera.timestamp)+ex+'.jpg'
-        GPIO.output(Relais_1_PIN, False)
+        name = '/home/pi/fotobox/img_'+str(self.camera.timestamp)+ex+'.jpg'
+        
         self.camera.capture(name)
         GPIO.output(Relais_1_PIN, True)
         #self.pictureDisplay.config(font=("Courier", 50))
         #self.pictureDisplay['text'] = 'lade...'
         self.showResult(3, name)
-      self.camera.resolution = PREVIEW_RESOLUTION 
+      self.camera.resolution = PREVIEW_RESOLUTION
+      self.camera.hflip = True
       self.camera.start_preview()
       self.is_ready_for_photo = True
     else:
